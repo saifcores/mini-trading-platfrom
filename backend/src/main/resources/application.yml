@@ -37,5 +37,5 @@ app:
 
 logging:
   level:
-    com.diallodev.trading: INFO
+    com.saifcores.trading: INFO
     org.springframework.security: INFO

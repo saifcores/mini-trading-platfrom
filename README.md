@@ -21,7 +21,7 @@ mini-trading-platform/
 ├── backend/                 # Spring Boot (Maven)
 │   ├── docker-compose.yml   # PostgreSQL only
 │   ├── Dockerfile
-│   └── src/main/java/com/diallodev/trading/...
+│   └── src/main/java/com/saifcores/trading/...
 ├── docs/
 │   └── ARCHITECTURE.md      # System design & diagrams
 ├── frontend/                # Vite + React
