@@ -116,22 +116,17 @@ npm run dev
 
 ### Environment
 
-Copy `frontend/.env.example` to `frontend/.env` and adjust.
+**Local development (default):** `frontend/.env.development` sets `VITE_DEV_PROXY_TARGET=http://localhost:8080`. With `npm run dev`, the UI treats the API as configured and sends `/api/...` and `/ws` through the Vite proxy to Spring Boot (same origin, no extra flags).
 
-| Variable                | Meaning                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `VITE_API_URL`          | Full backend origin, e.g. `http://localhost:8080` (no trailing slash)            |
-| `VITE_API_RELATIVE=1`   | Call `/api/...` on the **same origin** as the Vite app (use with proxy)          |
-| `VITE_DEV_PROXY_TARGET` | e.g. `http://localhost:8080` — Vite dev server proxies **`/api`** to this target |
+| Variable                | Meaning                                                                                |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| `VITE_DEV_PROXY_TARGET` | Backend origin for the dev proxy (`/api`, `/ws`). Default in `.env.development`.       |
+| `VITE_API_RELATIVE=1`   | Force same-origin `/api/...` (e.g. nginx serving both app and API).                    |
+| `VITE_API_URL`          | Direct backend URL (e.g. production or calling `http://localhost:8080` without proxy). |
 
-**Recommended local setup** (one origin, no CORS hassle):
+Copy `frontend/.env.example` if you need overrides; use `.env.local` for secrets (gitignored).
 
-```env
-VITE_DEV_PROXY_TARGET=http://localhost:8080
-VITE_API_RELATIVE=1
-```
-
-Then open the Vite URL (e.g. `http://localhost:5173`); requests go to `/api/...` and are proxied to Spring Boot.
+**Production build:** set `VITE_API_URL` to your deployed API (dev proxy is not used in `vite build`).
 
 ### Build
 
@@ -148,7 +143,7 @@ npm run preview   # optional production preview
 3. Open **Profile** → register or log in (JWT is stored; sidebar shows email when using the API).
 4. **Dashboard** shows net worth (cash + positions) when authenticated; **Trade** places real orders against the backend when a token is present.
 
-Without `VITE_API_*`, the UI uses built-in demo data.
+Without any of the above (e.g. production build with no `VITE_API_URL`), the UI uses built-in demo data.
 
 ---
 
@@ -156,5 +151,7 @@ Without `VITE_API_*`, the UI uses built-in demo data.
 
 1. `docker compose up -d` in `backend/`
 2. `cd backend && mvn spring-boot:run`
-3. `cd frontend` — create `.env` with `VITE_DEV_PROXY_TARGET` + `VITE_API_RELATIVE=1`
-4. `npm run dev` → register on Profile → trade and view portfolio/orders
+3. `cd frontend && npm install && npm run dev` (uses `frontend/.env.development` → proxy to `http://localhost:8080`)
+4. Open the app → **Profile** → register or log in → **Trade** / **Dashboard** / **Portfolio** / **Orders**
+
+The backend enables **CORS** for browser calls to a separate origin; the dev proxy avoids CORS during local work.
