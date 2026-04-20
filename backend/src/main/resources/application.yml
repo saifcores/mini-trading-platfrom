@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: trading-platform
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/trading}
+    username: ${DATABASE_USERNAME:trading}
+    password: ${DATABASE_PASSWORD:trading}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    show-sql: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-use-a-long-random-secret-key-at-least-256-bits-for-hs256}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  wallet:
+    initial-balance: 10000
+  market:
+    tick-interval-ms: 5000
+    price-random-factor: 0.004
+
+logging:
+  level:
+    com.diallodev.trading: INFO
+    org.springframework.security: INFO
