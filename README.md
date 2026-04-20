@@ -12,6 +12,8 @@ A small full-stack trading-style demo: **React (Vite)** frontend and **Spring Bo
 
 The backend follows **hexagonal-style** packages: `domain` (pure logic), `application` (use cases, DTOs), `infrastructure` (JPA, adapters), `presentation` (REST). The UI talks to the API over **`/api/...`** and stores the JWT in `localStorage`.
 
+**System design (layers, flows, diagrams):** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
 ## Repository layout
 
 ```
@@ -20,6 +22,8 @@ mini-trading-platform/
 │   ├── docker-compose.yml   # PostgreSQL only
 │   ├── Dockerfile
 │   └── src/main/java/com/diallodev/trading/...
+├── docs/
+│   └── ARCHITECTURE.md      # System design & diagrams
 ├── frontend/                # Vite + React
 │   └── src/...
 └── README.md
