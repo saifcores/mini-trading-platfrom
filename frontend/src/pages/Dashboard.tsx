@@ -1,13 +1,15 @@
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CandlestickChart } from "../components/charts/CandlestickChart";
 import { MiniSparkline } from "../components/charts/MiniSparkline";
 import { AppShell } from "../components/layout/AppShell";
 import { AnimatedBalance } from "../components/ui/AnimatedBalance";
 import { DataSourceBadge } from "../components/ui/DataSourceBadge";
 import { GlassCard } from "../components/ui/GlassCard";
-import { NEWS, PORTFOLIO, portfolioTotalValue } from "../data/mockData";
+import { NEWS, portfolioTotalValue } from "../data/mockData";
 import { useAssets } from "../hooks/useAssets";
+import { usePortfolioRows } from "../hooks/usePortfolioRows";
+import { useWallet } from "../hooks/useWallet";
 
 function randSeries(seed: number, n = 12) {
   let x = seed;
@@ -25,23 +27,29 @@ export function Dashboard() {
     error: assetsError,
     refetch: refetchAssets,
   } = useAssets();
-  const total = portfolioTotalValue(PORTFOLIO);
-  const [liveTotal, setLiveTotal] = useState(total);
+  const { balance: cashBalance, source: walletSource } = useWallet();
+  const {
+    rows: portfolioRows,
+    source: portfolioSource,
+    loading: portfolioLoading,
+    error: portfolioError,
+    refetch: refetchPortfolio,
+  } = usePortfolioRows();
+
+  const netWorth = useMemo(
+    () => cashBalance + portfolioTotalValue(portfolioRows),
+    [cashBalance, portfolioRows],
+  );
 
   const sparklinesBySymbol = useMemo(() => {
     const map: Record<string, number[]> = {};
-    for (const row of PORTFOLIO) {
+    for (const row of portfolioRows) {
       map[row.symbol] = randSeries(row.currentPrice);
     }
     return map;
-  }, []);
+  }, [portfolioRows]);
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setLiveTotal((v) => v + (Math.random() - 0.5) * 8);
-    }, 4000);
-    return () => clearInterval(id);
-  }, []);
+  const netWorthLive = walletSource === "api" && portfolioSource === "api";
 
   const movers = useMemo(
     () =>
@@ -65,18 +73,37 @@ export function Dashboard() {
           </p>
         </div>
 
-        {assetsError && (
+        {(assetsError || portfolioError) && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <span>
-              Market list API unreachable — showing demo movers. {assetsError}
+              {assetsError && (
+                <>
+                  Market list: {assetsError}
+                  <br />
+                </>
+              )}
+              {portfolioError && <>Portfolio: {portfolioError}</>}
             </span>
-            <button
-              type="button"
-              onClick={() => void refetchAssets()}
-              className="shrink-0 rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-100 hover:bg-amber-500/15 transition-colors"
-            >
-              Retry
-            </button>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              {assetsError && (
+                <button
+                  type="button"
+                  onClick={() => void refetchAssets()}
+                  className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-100 hover:bg-amber-500/15 transition-colors"
+                >
+                  Retry markets
+                </button>
+              )}
+              {portfolioError && (
+                <button
+                  type="button"
+                  onClick={() => void refetchPortfolio()}
+                  className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-100 hover:bg-amber-500/15 transition-colors"
+                >
+                  Retry portfolio
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -89,12 +116,17 @@ export function Dashboard() {
           >
             <GlassCard className="relative overflow-hidden min-h-[180px]">
               <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-sky-500/25 to-violet-600/20 blur-3xl pointer-events-none" />
-              <p className="text-sm text-slate-400 mb-2">Total balance</p>
-              <p className="text-3xl lg:text-4xl font-semibold text-white mb-2">
-                <AnimatedBalance value={liveTotal} />
+              <p className="text-sm text-slate-400 mb-2">
+                Net worth{" "}
+                <span className="text-slate-600">(cash + positions)</span>
               </p>
-              <p className="text-sm text-emerald-400 font-medium">
-                +2.4% today
+              <p className="text-3xl lg:text-4xl font-semibold text-white mb-2">
+                <AnimatedBalance value={netWorth} />
+              </p>
+              <p className="text-sm text-slate-500 font-medium">
+                {netWorthLive
+                  ? "Live wallet & portfolio"
+                  : "Demo cash + demo or cached portfolio"}
               </p>
               <div className="mt-6 h-2 rounded-full bg-white/[0.06] overflow-hidden">
                 <motion.div
@@ -124,11 +156,17 @@ export function Dashboard() {
 
           <div className="col-span-12 lg:col-span-6">
             <GlassCard>
-              <h2 className="text-sm font-semibold text-white mb-4">
-                Portfolio overview
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h2 className="text-sm font-semibold text-white">
+                  Portfolio overview
+                </h2>
+                <DataSourceBadge
+                  source={portfolioSource}
+                  loading={portfolioLoading}
+                />
+              </div>
               <div className="space-y-3">
-                {PORTFOLIO.map((row) => {
+                {portfolioRows.map((row) => {
                   const pnl = row.qty * (row.currentPrice - row.avgPrice);
                   const pos = pnl >= 0;
                   return (

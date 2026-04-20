@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { placeTrade } from "../api/trading";
 import { CandlestickChart } from "../components/charts/CandlestickChart";
 import { AppShell } from "../components/layout/AppShell";
 import { TradeConfirmModal } from "../components/trading/TradeConfirmModal";
 import { DataSourceBadge } from "../components/ui/DataSourceBadge";
+import { ASSETS } from "../data/mockData";
 import { useAssets } from "../hooks/useAssets";
 import { useToast } from "../hooks/useToast";
-import { ASSETS } from "../data/mockData";
-
-const BALANCE = 125_000;
+import { useWallet } from "../hooks/useWallet";
+import { ApiError, getAuthToken } from "../lib/api/client";
+import { isApiConfigured } from "../lib/env";
 
 export function Trading() {
   const showToast = useToast();
@@ -18,6 +20,7 @@ export function Trading() {
     error: assetsError,
     refetch: refetchAssets,
   } = useAssets();
+  const { balance: buyingPower, refetch: refetchWallet } = useWallet();
   const [selectedSymbol, setSelectedSymbol] = useState(ASSETS[0].symbol);
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [qty, setQty] = useState("2");
@@ -72,7 +75,7 @@ export function Trading() {
   const qtyNum = Number(qty) || 0;
   const total = qtyNum * livePrice;
 
-  const insufficient = side === "buy" && total > BALANCE;
+  const insufficient = side === "buy" && total > buyingPower;
 
   const openConfirm = () => {
     if (insufficient) {
@@ -91,15 +94,42 @@ export function Trading() {
 
   const closeModal = useCallback(() => setModalOpen(false), []);
 
-  const confirmTrade = useCallback(() => {
+  const confirmTrade = useCallback(async () => {
     setModalOpen(false);
+    if (isApiConfigured() && getAuthToken()) {
+      try {
+        const res = await placeTrade({
+          symbol: selected.symbol,
+          side: side === "buy" ? "BUY" : "SELL",
+          quantity: Math.max(1, Math.floor(qtyNum)),
+        });
+        if (res.status === "FAILED") {
+          showToast(res.failureReason ?? "Order failed", "error");
+          return;
+        }
+        showToast(
+          res.status === "EXECUTED"
+            ? `Order #${res.orderId} executed at $${(res.unitPrice ?? 0).toFixed(2)}.`
+            : `Order #${res.orderId} is ${res.status}.`,
+          "success",
+        );
+        void refetchWallet();
+      } catch (e) {
+        const msg =
+          e instanceof ApiError
+            ? e.message
+            : "Could not place order. Try again.";
+        showToast(msg, "error");
+      }
+      return;
+    }
     showToast(
       side === "buy"
-        ? `Buy order for ${qtyNum} ${selected.symbol} submitted.`
-        : `Sell order for ${qtyNum} ${selected.symbol} submitted.`,
+        ? `Buy order for ${qtyNum} ${selected.symbol} submitted (demo).`
+        : `Sell order for ${qtyNum} ${selected.symbol} submitted (demo).`,
       "success",
     );
-  }, [qtyNum, selected.symbol, showToast, side]);
+  }, [qtyNum, refetchWallet, selected.symbol, showToast, side]);
 
   return (
     <AppShell wide>
@@ -260,7 +290,7 @@ export function Trading() {
                 <div className="flex justify-between text-slate-400 text-xs">
                   <span>Buying power</span>
                   <span className="text-slate-300">
-                    ${BALANCE.toLocaleString()}
+                    ${buyingPower.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -290,7 +320,7 @@ export function Trading() {
         variant={side}
         confirmLabel={side === "buy" ? "Confirm buy" : "Confirm sell"}
         onCancel={closeModal}
-        onConfirm={confirmTrade}
+        onConfirm={() => void confirmTrade()}
       >
         <p>
           <span className="text-slate-500">Asset</span>{" "}

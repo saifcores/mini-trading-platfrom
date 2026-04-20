@@ -12,10 +12,23 @@ export class ApiError extends Error {
   }
 }
 
-function readAuthToken(): string | null {
+export function getAuthToken(): string | null {
   if (typeof globalThis.localStorage === "undefined") return null;
   const raw = globalThis.localStorage.getItem("auth_token");
   return raw?.trim() || null;
+}
+
+export function setAuthToken(token: string | null): void {
+  if (typeof globalThis.localStorage === "undefined") return;
+  if (token) {
+    globalThis.localStorage.setItem("auth_token", token);
+  } else {
+    globalThis.localStorage.removeItem("auth_token");
+  }
+}
+
+function readAuthToken(): string | null {
+  return getAuthToken();
 }
 
 export async function apiFetch<T>(
@@ -32,7 +45,8 @@ export async function apiFetch<T>(
   const url = base === "" ? pathPart : `${base}${pathPart}`;
   const headers = new Headers(init?.headers);
   const token = readAuthToken();
-  if (token) {
+  const isAuthEndpoint = pathPart.startsWith("/api/auth/");
+  if (token && !isAuthEndpoint) {
     headers.set("Authorization", `Bearer ${token}`);
   }
   if (
@@ -47,11 +61,16 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new ApiError(
-      text || res.statusText || "Request failed",
-      res.status,
-      text,
-    );
+    let message = text || res.statusText || "Request failed";
+    try {
+      const j = JSON.parse(text) as { message?: string; code?: string };
+      if (typeof j.message === "string") {
+        message = j.code ? `${j.code}: ${j.message}` : j.message;
+      }
+    } catch {
+      /* keep body as message */
+    }
+    throw new ApiError(message, res.status, text);
   }
 
   if (res.status === 204) {

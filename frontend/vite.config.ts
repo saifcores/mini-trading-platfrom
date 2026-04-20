@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     server: proxyTarget
       ? {
           proxy: {
-            "/v1": {
+            "/api": {
               target: proxyTarget,
               changeOrigin: true,
             },

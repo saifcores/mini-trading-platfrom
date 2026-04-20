@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { getAuthEmail } from "../../api/auth";
+import { isApiConfigured } from "../../lib/env";
 import { PrefetchNavLink } from "./PrefetchNavLink";
 
 const links = [
@@ -9,6 +12,22 @@ const links = [
 ] as const;
 
 export function Sidebar() {
+  const [sessionEmail, setSessionEmail] = useState<string | null>(() =>
+    isApiConfigured() ? getAuthEmail() : null,
+  );
+
+  useEffect(() => {
+    if (!isApiConfigured()) return;
+    const sync = () => setSessionEmail(getAuthEmail());
+    sync();
+    window.addEventListener("auth-changed", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      window.removeEventListener("auth-changed", sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, []);
+
   return (
     <aside className="hidden lg:flex w-60 shrink-0 flex-col border-r border-white/[0.06] glass-panel rounded-none border-t-0 border-b-0 border-l-0">
       <div className="p-6 pb-2">
@@ -20,7 +39,9 @@ export function Sidebar() {
             <p className="text-sm font-semibold text-white tracking-tight">
               Apex Trade
             </p>
-            <p className="text-[11px] text-slate-500">Premium · Live</p>
+            <p className="text-[11px] text-slate-500">
+              {sessionEmail ? sessionEmail : "Premium · Live"}
+            </p>
           </div>
         </div>
       </div>
