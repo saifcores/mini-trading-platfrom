@@ -198,40 +198,42 @@ erDiagram
   USER ||--o{ PORTFOLIO_POSITION : holds
   STOCK ||--o{ ORDER : references
   USER {
-    long id PK
-    string email UK
+    bigint id
+    string email
     string password_hash
   }
   WALLET {
-    long id PK
-    long user_id FK UK
+    bigint id
+    bigint user_id
     decimal balance
-    long version
+    bigint version
   }
   ORDER {
-    long id PK
-    long user_id FK
+    bigint id
+    bigint user_id
     string symbol
-    enum side
+    string side
     int quantity
-    enum status
+    string status
     decimal unit_price
     decimal total_amount
   }
   PORTFOLIO_POSITION {
-    long id PK
-    long user_id FK
+    bigint id
+    bigint user_id
     string symbol
     int quantity
     decimal average_price
   }
   STOCK {
-    string symbol PK
+    string symbol
     string name
     decimal current_price
     decimal volatility
   }
 ```
+
+Keys: `USER.id` is primary key; `USER.email` unique; `WALLET.user_id` unique FK to `USER`; other `user_id` columns FK to `USER`; `ORDER.symbol` FK to `STOCK.symbol`.
 
 
 
