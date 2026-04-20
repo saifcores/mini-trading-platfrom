@@ -53,12 +53,19 @@ export type TradeResponseBody = {
   createdAt: string;
 };
 
+/** Normalize Jackson numbers (sometimes serialized as strings). */
+function num(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") return Number(v);
+  return Number.NaN;
+}
+
 function mapStockToAsset(s: StockResponse): Asset {
   return {
     symbol: s.symbol,
     name: s.name,
-    price: Number(s.price),
-    changePct: Number(s.changePct),
+    price: num(s.price),
+    changePct: num(s.changePct),
   };
 }
 
@@ -66,8 +73,8 @@ function mapPortfolioItem(p: PortfolioItemResponse): PortfolioRow {
   return {
     symbol: p.symbol,
     qty: p.quantity,
-    avgPrice: Number(p.averagePrice),
-    currentPrice: Number(p.currentPrice),
+    avgPrice: num(p.averagePrice),
+    currentPrice: num(p.currentPrice),
   };
 }
 
@@ -100,8 +107,8 @@ function mapOrder(o: OrderHistoryItemResponse): OrderRow {
     side: o.side,
     status: STATUS_MAP[o.status] ?? "pending",
     amount:
-      o.totalAmount != null && Number.isFinite(Number(o.totalAmount))
-        ? Number(o.totalAmount)
+      o.totalAmount != null && Number.isFinite(num(o.totalAmount))
+        ? num(o.totalAmount)
         : 0,
   };
 }
