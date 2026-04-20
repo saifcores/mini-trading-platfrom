@@ -1,0 +1,2 @@
+# Override global ignores that match any path named "lib/" so app sources stay tracked
+!frontend/src/lib/
