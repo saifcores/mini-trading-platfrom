@@ -135,13 +135,14 @@ sequenceDiagram
   participant U as UserRepository
   participant W as WalletRepository
   participant J as JwtTokenProvider
-  C->>API: POST /api/auth/register | login
-  API->>S: register / login
-  S->>U: persist user / load user
+  C->>API: POST /api/auth/register or login
+  API->>S: register or login
+  S->>U: persist or load user
   S->>W: create wallet on register
-  S->>J: createAccessToken(userId, email)
-  J-->>C: AuthResponse (Bearer token)
-  Note over C: Subsequent requests: Authorization: Bearer ...
+  S->>J: createAccessToken(subject)
+  J-->>API: signed JWT
+  API-->>C: AuthResponse with token
+  Note over C: Later calls send Authorization Bearer header
 ```
 
 
@@ -167,8 +168,8 @@ sequenceDiagram
   TS->>WR: findByUserIdForUpdate (lock)
   TS->>SR: findBySymbolForUpdate (lock)
   TS->>PR: find position for update (optional)
-  TS->>D: execute(order, wallet, position?, stock)
-  D-->>TS: mutates wallet, position, order → EXECUTED
+  TS->>D: execute order against wallet stock position
+  D-->>TS: wallet position order updated EXECUTED
   TS->>OR: save order
   TS->>WR: save wallet
   TS->>PR: save/delete position
@@ -233,9 +234,19 @@ erDiagram
   }
 ```
 
-Keys: `USER.id` is primary key; `USER.email` unique; `WALLET.user_id` unique FK to `USER`; other `user_id` columns FK to `USER`; `ORDER.symbol` FK to `STOCK.symbol`.
+Keys and indexes (logical): `USER.id` primary key; `USER.email` unique; `WALLET.user_id` unique foreign key to `USER`; `ORDER.user_id` and `PORTFOLIO_POSITION.user_id` foreign keys to `USER`; `ORDER.symbol` foreign key to `STOCK.symbol`; `STOCK.symbol` primary key.
 
+### 6.1 JPA ↔ diagram mapping
 
+| Diagram entity       | Typical JPA table / entity                        |
+| -------------------- | ------------------------------------------------- |
+| `USER`               | `users` / `UserEntity`                            |
+| `WALLET`             | `wallets` / `WalletEntity`                        |
+| `ORDER`              | `orders` / `OrderEntity`                          |
+| `PORTFOLIO_POSITION` | `portfolio_positions` / `PortfolioPositionEntity` |
+| `STOCK`              | `stocks` / `StockEntity`                          |
+
+`side` and `status` on `ORDER` map to `OrderSide` and `OrderStatus` in code; JPA persists them as **enum name strings** (`@Enumerated(EnumType.STRING)`).
 
 ---
 

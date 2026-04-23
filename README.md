@@ -146,6 +146,7 @@ npm run preview   # optional production preview
 2. Configure `.env` as above and run `npm run dev`.
 3. Open **Profile** → register or log in (JWT is stored; sidebar shows email when using the API).
 4. **Dashboard** shows net worth (cash + positions) when authenticated; **Trade** places real orders against the backend when a token is present.
+5. With the API enabled, the SPA opens a **STOMP** WebSocket to `/ws` and subscribes to `/topic/prices`; live ticks update movers and the Trading quote (the assets badge shows **Live API · WS** when the stream is connected).
 
 Without any of the above (e.g. production build with no `VITE_API_URL`), the UI uses built-in demo data.
 
