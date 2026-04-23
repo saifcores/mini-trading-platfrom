@@ -182,7 +182,12 @@ export function Profile() {
         )}
 
         <GlassCard>
-          <h2 className="text-sm font-semibold text-white mb-1">Security</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+            <h2 className="text-sm font-semibold text-white">Security</h2>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-amber-400/90 border border-amber-500/30 rounded-md px-1.5 py-0.5">
+              UI demo
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mb-4">
             Protect your account with layered verification.
           </p>
@@ -221,9 +226,12 @@ export function Profile() {
         </GlassCard>
 
         <GlassCard>
-          <h2 className="text-sm font-semibold text-white mb-4">
-            Notifications
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+            <h2 className="text-sm font-semibold text-white">Notifications</h2>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-amber-400/90 border border-amber-500/30 rounded-md px-1.5 py-0.5">
+              UI demo
+            </span>
+          </div>
           <div className="space-y-4">
             <label className="flex items-center justify-between gap-4 cursor-pointer">
               <span className="text-sm text-slate-300">Email summaries</span>

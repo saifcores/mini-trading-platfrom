@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
 import { DataSourceBadge } from "../components/ui/DataSourceBadge";
+import { EmptyState } from "../components/ui/EmptyState";
 import { GlassCard } from "../components/ui/GlassCard";
 import { useOrders } from "../hooks/useOrders";
 
@@ -58,51 +60,71 @@ export function OrderHistory() {
           </div>
         )}
 
-        <GlassCard hover={false}>
-          <div className="overflow-x-auto -mx-2">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="text-left text-slate-500 border-b border-white/[0.06]">
-                  <th className="pb-3 pl-2 font-medium">Date</th>
-                  <th className="pb-3 font-medium">Asset</th>
-                  <th className="pb-3 font-medium">Type</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 pr-2 font-medium text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr
-                    key={o.id}
-                    className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors duration-200"
-                  >
-                    <td className="py-3 pl-2 text-slate-400 whitespace-nowrap">
-                      {o.date}
-                    </td>
-                    <td className="py-3 font-semibold text-white">{o.asset}</td>
-                    <td className="py-3">
-                      <span
-                        className={
-                          o.side === "BUY"
-                            ? "text-emerald-400 font-medium"
-                            : "text-red-400 font-medium"
-                        }
-                      >
-                        {o.side}
-                      </span>
-                    </td>
-                    <td className="py-3">
-                      <StatusBadge status={o.status} />
-                    </td>
-                    <td className="py-3 pr-2 text-right tabular-nums text-slate-200">
-                      ${o.amount.toFixed(2)}
-                    </td>
+        {!loading && orders.length === 0 ? (
+          <EmptyState
+            title="No orders yet"
+            description="Place a buy or sell from the trade desk. When you use the live API, executed orders will appear in this list."
+            action={{ to: "/trade", label: "Go to trade" }}
+            icon="☰"
+          />
+        ) : (
+          <GlassCard hover={false}>
+            <div className="overflow-x-auto -mx-2">
+              <table className="w-full min-w-[780px] text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500 border-b border-white/[0.06]">
+                    <th className="pb-3 pl-2 font-medium">Date</th>
+                    <th className="pb-3 font-medium">Asset</th>
+                    <th className="pb-3 font-medium">Qty</th>
+                    <th className="pb-3 font-medium">Type</th>
+                    <th className="pb-3 font-medium">Status</th>
+                    <th className="pb-3 pr-2 font-medium text-right">Amount</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </GlassCard>
+                </thead>
+                <tbody>
+                  {orders.map((o) => (
+                    <tr
+                      key={o.id}
+                      className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors duration-200"
+                    >
+                      <td className="py-3 pl-2 text-slate-400 whitespace-nowrap">
+                        {o.date}
+                      </td>
+                      <td className="py-3">
+                        <Link
+                          to={`/symbol/${o.asset}`}
+                          className="font-semibold text-sky-400 hover:text-sky-300"
+                        >
+                          {o.asset}
+                        </Link>
+                      </td>
+                      <td className="py-3 text-slate-300 tabular-nums">
+                        {o.quantity ?? "—"}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={
+                            o.side === "BUY"
+                              ? "text-emerald-400 font-medium"
+                              : "text-red-400 font-medium"
+                          }
+                        >
+                          {o.side}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <StatusBadge status={o.status} />
+                      </td>
+                      <td className="py-3 pr-2 text-right tabular-nums text-slate-200">
+                        ${o.amount.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+        )}
       </div>
     </AppShell>
   );

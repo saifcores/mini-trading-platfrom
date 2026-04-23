@@ -5,6 +5,7 @@ import { PrefetchNavLink } from "./PrefetchNavLink";
 
 const links = [
   { to: "/", label: "Dashboard", icon: "◆" },
+  { to: "/market", label: "Markets", icon: "▤" },
   { to: "/trade", label: "Trade", icon: "◇" },
   { to: "/portfolio", label: "Portfolio", icon: "▣" },
   { to: "/orders", label: "Orders", icon: "☰" },
@@ -68,13 +69,11 @@ export function Sidebar() {
         <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-2">
           Status
         </p>
-        <div className="flex items-center gap-2 text-xs text-emerald-400">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
-          Markets open · Real-time
-        </div>
+        <p className="text-xs text-slate-500 leading-snug">
+          {isApiConfigured()
+            ? "API mode — see status bar in main"
+            : "Mock mode — no network"}
+        </p>
       </div>
     </aside>
   );

@@ -5,6 +5,8 @@ export function prefetchRoute(pathname: string) {
   switch (pathname) {
     case "/":
       return import("../pages/Dashboard");
+    case "/market":
+      return import("../pages/Market");
     case "/trade":
       return import("../pages/Trading");
     case "/portfolio":

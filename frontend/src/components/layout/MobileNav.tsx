@@ -2,9 +2,10 @@ import { PrefetchNavLink } from "./PrefetchNavLink";
 
 const items = [
   { to: "/", label: "Home", icon: "◆" },
+  { to: "/market", label: "Mkt", icon: "▤" },
   { to: "/trade", label: "Trade", icon: "◇" },
   { to: "/portfolio", label: "Port.", icon: "▣" },
-  { to: "/orders", label: "Orders", icon: "☰" },
+  { to: "/orders", label: "Ord.", icon: "☰" },
   { to: "/profile", label: "You", icon: "◎" },
 ] as const;
 

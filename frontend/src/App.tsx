@@ -23,6 +23,14 @@ const Profile = lazy(async () => {
   const m = await import("./pages/Profile");
   return { default: m.Profile };
 });
+const Market = lazy(async () => {
+  const m = await import("./pages/Market");
+  return { default: m.Market };
+});
+const AssetDetail = lazy(async () => {
+  const m = await import("./pages/AssetDetail");
+  return { default: m.AssetDetail };
+});
 const NotFound = lazy(async () => {
   const m = await import("./pages/NotFound");
   return { default: m.NotFound };
@@ -35,6 +43,8 @@ export default function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/market" element={<Market />} />
+            <Route path="/symbol/:symbol" element={<AssetDetail />} />
             <Route path="/trade" element={<Trading />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/orders" element={<OrderHistory />} />

@@ -1,7 +1,15 @@
 import { apiFetch } from "../lib/api/client";
+import { num } from "../lib/jsonNumbers";
 import type { Asset, OrderRow, PortfolioRow } from "./types";
+import { API_PATHS } from "./paths";
 
-/** Spring Boot JSON shapes (camelCase via Jackson) */
+/** Dispatched on `window` after a successful API trade so lists can re-sync. */
+export const TRADING_UPDATED_EVENT = "trading-updated";
+
+/**
+ * JSON shapes mirror backend `application.dto` records (Jackson camelCase).
+ * Enums: `OrderSide` → "BUY" | "SELL"; `OrderStatus` → PENDING | EXECUTED | FAILED.
+ */
 
 type StockResponse = {
   symbol: string;
@@ -53,13 +61,6 @@ export type TradeResponseBody = {
   createdAt: string;
 };
 
-/** Normalize Jackson numbers (sometimes serialized as strings). */
-function num(v: unknown): number {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim() !== "") return Number(v);
-  return Number.NaN;
-}
-
 function mapStockToAsset(s: StockResponse): Asset {
   return {
     symbol: s.symbol,
@@ -70,12 +71,19 @@ function mapStockToAsset(s: StockResponse): Asset {
 }
 
 function mapPortfolioItem(p: PortfolioItemResponse): PortfolioRow {
-  return {
+  const row: PortfolioRow = {
     symbol: p.symbol,
-    qty: p.quantity,
+    qty: Math.trunc(num(p.quantity)) || 0,
     avgPrice: num(p.averagePrice),
     currentPrice: num(p.currentPrice),
   };
+  if (p.marketValue != null && Number.isFinite(num(p.marketValue))) {
+    row.marketValue = num(p.marketValue);
+  }
+  if (p.unrealizedPnl != null && Number.isFinite(num(p.unrealizedPnl))) {
+    row.unrealizedPnl = num(p.unrealizedPnl);
+  }
+  return row;
 }
 
 const STATUS_MAP: Record<
@@ -100,12 +108,14 @@ function formatOrderDate(iso: string): string {
 }
 
 function mapOrder(o: OrderHistoryItemResponse): OrderRow {
+  const q = Math.trunc(num(o.quantity));
   return {
     id: String(o.id),
     date: formatOrderDate(o.createdAt),
     asset: o.symbol,
     side: o.side,
     status: STATUS_MAP[o.status] ?? "pending",
+    quantity: Number.isFinite(q) && q > 0 ? q : undefined,
     amount:
       o.totalAmount != null && Number.isFinite(num(o.totalAmount))
         ? num(o.totalAmount)
@@ -113,36 +123,61 @@ function mapOrder(o: OrderHistoryItemResponse): OrderRow {
   };
 }
 
-/** GET /api/market/stocks (public) */
+function mapTradeResponse(raw: TradeResponseBody): TradeResponseBody {
+  const oid = num(raw.orderId);
+  const qty = Math.trunc(num(raw.quantity));
+  return {
+    orderId: Number.isFinite(oid) ? oid : 0,
+    symbol: raw.symbol,
+    side: raw.side,
+    quantity: Number.isFinite(qty) && qty > 0 ? qty : 0,
+    status: raw.status,
+    unitPrice:
+      raw.unitPrice == null || !Number.isFinite(num(raw.unitPrice))
+        ? null
+        : num(raw.unitPrice),
+    totalAmount:
+      raw.totalAmount == null || !Number.isFinite(num(raw.totalAmount))
+        ? null
+        : num(raw.totalAmount),
+    failureReason: raw.failureReason ?? null,
+    createdAt: raw.createdAt,
+  };
+}
+
+/** GET /api/market/stocks — `MarketController` */
 export function fetchAssets(): Promise<Asset[]> {
-  return apiFetch<StockResponse[]>("/api/market/stocks").then((rows) =>
+  return apiFetch<StockResponse[]>(API_PATHS.marketStocks).then((rows) =>
     rows.map(mapStockToAsset),
   );
 }
 
-/** GET /api/portfolio (Bearer) */
+/** GET /api/portfolio — `PortfolioController` */
 export function fetchPortfolio(): Promise<PortfolioRow[]> {
-  return apiFetch<PortfolioItemResponse[]>("/api/portfolio").then((rows) =>
+  return apiFetch<PortfolioItemResponse[]>(API_PATHS.portfolio).then((rows) =>
     rows.map(mapPortfolioItem),
   );
 }
 
-/** GET /api/orders (Bearer) */
+/** GET /api/orders — `OrderController` */
 export function fetchOrders(): Promise<OrderRow[]> {
-  return apiFetch<OrderHistoryItemResponse[]>("/api/orders").then((rows) =>
+  return apiFetch<OrderHistoryItemResponse[]>(API_PATHS.orders).then((rows) =>
     rows.map(mapOrder),
   );
 }
 
-/** GET /api/wallet (Bearer) */
+/** GET /api/wallet — `WalletController`, `WalletResponse` */
 export function fetchWallet(): Promise<WalletResponse> {
-  return apiFetch<WalletResponse>("/api/wallet");
+  return apiFetch<WalletResponse>(API_PATHS.wallet).then((w) => ({
+    walletId: num(w.walletId),
+    balance: num(w.balance),
+  }));
 }
 
-/** POST /api/trades (Bearer) */
+/** POST /api/trades — `TradeController`, `TradeRequest` / `TradeResponse` */
 export function placeTrade(body: TradeRequestBody): Promise<TradeResponseBody> {
-  return apiFetch<TradeResponseBody>("/api/trades", {
+  return apiFetch<TradeResponseBody>(API_PATHS.trades, {
     method: "POST",
     body: JSON.stringify(body),
-  });
+  }).then(mapTradeResponse);
 }

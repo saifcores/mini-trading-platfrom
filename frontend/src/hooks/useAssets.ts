@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAssets } from "../api/trading";
+import { usePriceStream } from "../contexts/PriceStreamContext";
 import type { Asset } from "../data/mockData";
 import { ASSETS } from "../data/mockData";
 import { ApiError } from "../lib/api/client";
@@ -14,10 +15,33 @@ function formatAssetsError(e: unknown): string {
 }
 
 export function useAssets() {
+  const streamEnabled = isApiConfigured();
+  const { connected: streamConnected, ticks, lastTickAt } = usePriceStream();
+  const [listFetchedAt, setListFetchedAt] = useState<number | null>(null);
+
   const [assets, setAssets] = useState<Asset[]>(ASSETS);
   const [source, setSource] = useState<Source>("mock");
   const [loading, setLoading] = useState(isApiConfigured);
   const [error, setError] = useState<string | null>(null);
+
+  const lastSyncAt = useMemo(() => {
+    const a = listFetchedAt ?? 0;
+    const b = lastTickAt ?? 0;
+    const m = Math.max(a, b);
+    return m > 0 ? m : null;
+  }, [listFetchedAt, lastTickAt]);
+
+  useEffect(() => {
+    if (!streamEnabled || !ticks) return;
+    setAssets((prev) =>
+      prev.map((a) => {
+        const t = ticks[a.symbol];
+        if (!t) return a;
+        return { ...a, price: t.price, changePct: t.changePct };
+      }),
+    );
+    setSource("api");
+  }, [ticks, streamEnabled]);
 
   useEffect(() => {
     if (!isApiConfigured()) return;
@@ -28,6 +52,7 @@ export function useAssets() {
         setError(null);
         setAssets(data);
         setSource("api");
+        setListFetchedAt(Date.now());
       })
       .catch((e) => {
         if (cancelled) return;
@@ -49,6 +74,7 @@ export function useAssets() {
       setSource("mock");
       setError(null);
       setLoading(false);
+      setListFetchedAt(null);
       return Promise.resolve();
     }
     setLoading(true);
@@ -57,6 +83,7 @@ export function useAssets() {
       .then((data) => {
         setAssets(data);
         setSource("api");
+        setListFetchedAt(Date.now());
       })
       .catch((e) => {
         setError(formatAssetsError(e));
@@ -66,5 +93,13 @@ export function useAssets() {
       .finally(() => setLoading(false));
   }, []);
 
-  return { assets, source, loading, error, refetch };
+  return {
+    assets,
+    source,
+    loading,
+    error,
+    refetch,
+    streamConnected,
+    lastSyncAt,
+  };
 }

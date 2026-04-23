@@ -23,3 +23,25 @@ export function getApiBaseUrl(): string | null {
 export function isApiConfigured(): boolean {
   return getApiBaseUrl() !== null;
 }
+
+/**
+ * STOMP WebSocket endpoint URL (Spring Boot registers `/ws`).
+ * Same rules as API base: relative origin in dev behind Vite proxy, or derived from `VITE_API_URL`.
+ */
+export function getWsUrl(): string | null {
+  if (getApiBaseUrl() === null) return null;
+  if (typeof globalThis.window === "undefined") return null;
+  const base = getApiBaseUrl()!;
+  if (base === "") {
+    const proto =
+      globalThis.window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${proto}//${globalThis.window.location.host}/ws`;
+  }
+  try {
+    const u = new URL(base);
+    const wsProto = u.protocol === "https:" ? "wss:" : "ws:";
+    return `${wsProto}//${u.host}/ws`;
+  } catch {
+    return null;
+  }
+}

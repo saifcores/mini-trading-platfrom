@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { placeTrade } from "../api/trading";
+import { useSearchParams } from "react-router-dom";
+import { placeTrade, TRADING_UPDATED_EVENT } from "../api/trading";
 import { CandlestickChart } from "../components/charts/CandlestickChart";
 import { AppShell } from "../components/layout/AppShell";
 import { TradeConfirmModal } from "../components/trading/TradeConfirmModal";
@@ -13,15 +14,24 @@ import { isApiConfigured } from "../lib/env";
 
 export function Trading() {
   const showToast = useToast();
+  const [searchParams] = useSearchParams();
   const {
     assets,
     source: assetSource,
     loading: assetsLoading,
     error: assetsError,
     refetch: refetchAssets,
+    streamConnected,
   } = useAssets();
   const { balance: buyingPower, refetch: refetchWallet } = useWallet();
   const [selectedSymbol, setSelectedSymbol] = useState(ASSETS[0].symbol);
+
+  useEffect(() => {
+    const s = searchParams.get("symbol")?.trim().toUpperCase();
+    if (!s) return;
+    const found = assets.some((a) => a.symbol === s);
+    if (found) setSelectedSymbol(s);
+  }, [searchParams, assets]);
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [qty, setQty] = useState("2");
   const [priceBlink, setPriceBlink] = useState<"up" | "down" | null>(null);
@@ -47,7 +57,31 @@ export function Trading() {
     priceMap[selected.symbol] ??
     selected.price;
 
+  const prevStreamPriceRef = useRef<number | null>(null);
   useEffect(() => {
+    prevStreamPriceRef.current = null;
+  }, [selectedSymbol]);
+
+  useEffect(() => {
+    if (assetSource !== "api") return;
+    const p = livePrice;
+    if (prevStreamPriceRef.current === null) {
+      prevStreamPriceRef.current = p;
+      return;
+    }
+    if (prevStreamPriceRef.current === p) return;
+    const up = p >= prevStreamPriceRef.current;
+    prevStreamPriceRef.current = p;
+    setPriceBlink(up ? "up" : "down");
+    if (blinkClearRef.current) clearTimeout(blinkClearRef.current);
+    blinkClearRef.current = window.setTimeout(() => {
+      setPriceBlink(null);
+      blinkClearRef.current = null;
+    }, 500);
+  }, [assetSource, livePrice]);
+
+  useEffect(() => {
+    if (assetSource === "api") return;
     const id = window.setInterval(() => {
       const delta = (Math.random() - 0.5) * 0.4;
       setPriceOverrides((prev) => {
@@ -70,7 +104,7 @@ export function Trading() {
       clearInterval(id);
       if (blinkClearRef.current) clearTimeout(blinkClearRef.current);
     };
-  }, [selectedSymbol, priceMap, assets]);
+  }, [assetSource, selectedSymbol, priceMap, assets]);
 
   const qtyNum = Number(qty) || 0;
   const total = qtyNum * livePrice;
@@ -114,6 +148,9 @@ export function Trading() {
           "success",
         );
         void refetchWallet();
+        if (typeof globalThis.window !== "undefined") {
+          globalThis.window.dispatchEvent(new Event(TRADING_UPDATED_EVENT));
+        }
       } catch (e) {
         const msg =
           e instanceof ApiError
@@ -164,7 +201,11 @@ export function Trading() {
               <p className="text-[11px] uppercase tracking-wider text-slate-500">
                 Assets
               </p>
-              <DataSourceBadge source={assetSource} loading={assetsLoading} />
+              <DataSourceBadge
+                source={assetSource}
+                loading={assetsLoading}
+                streamConnected={streamConnected}
+              />
             </div>
             <div className="glass-panel rounded-2xl overflow-hidden flex-1 flex flex-col max-h-[320px] lg:max-h-none">
               <div className="overflow-y-auto flex-1 p-2 space-y-1">
@@ -222,7 +263,13 @@ export function Trading() {
                   >
                     ${livePrice.toFixed(2)}
                   </p>
-                  <p className="text-xs text-slate-500">Last · simulated</p>
+                  <p className="text-xs text-slate-500">
+                    {assetSource === "api"
+                      ? streamConnected
+                        ? "Last · live stream"
+                        : "Last · API (WS connecting…)"
+                      : "Last · simulated"}
+                  </p>
                 </div>
               </div>
               <div className="flex-1 min-h-[240px]">

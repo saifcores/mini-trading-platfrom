@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ConnectionStatus } from "./ConnectionStatus";
 import { MobileNav } from "./MobileNav";
 import { Sidebar } from "./Sidebar";
 
@@ -23,19 +24,28 @@ export function AppShell({ children, wide = false }: Props) {
           wide ? "" : "max-w-[1600px] mx-auto w-full"
         }`}
       >
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-white/6 glass-panel rounded-none">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg gradient-accent flex items-center justify-center text-white text-xs font-bold">
-              AT
+        <header className="lg:hidden border-b border-white/6 glass-panel rounded-none">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg gradient-accent flex items-center justify-center text-white text-xs font-bold">
+                AT
+              </div>
+              <span className="font-semibold text-white text-sm">
+                Apex Trade
+              </span>
             </div>
-            <span className="font-semibold text-white text-sm">Apex Trade</span>
           </div>
-          <span className="text-[10px] text-emerald-400 font-medium">Live</span>
+          <div className="px-4 pb-2">
+            <ConnectionStatus />
+          </div>
         </header>
         <main
           id="main-content"
           className={`flex-1 px-4 lg:px-8 py-4 lg:py-6 ${wide ? "w-full" : ""}`}
         >
+          <div className="hidden lg:block max-w-full mb-2">
+            <ConnectionStatus />
+          </div>
           {children}
         </main>
       </div>

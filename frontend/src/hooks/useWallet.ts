@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchWallet } from "../api/trading";
+import { DEMO_WALLET_BALANCE } from "../data/mockData";
 import { ApiError, getAuthToken } from "../lib/api/client";
 import { isApiConfigured } from "../lib/env";
 
-/** Demo cash balance when API is off or unauthenticated */
-export const DEMO_WALLET_BALANCE = 125_000;
+export { DEMO_WALLET_BALANCE } from "../data/mockData";
 
 type Source = "mock" | "api";
 
@@ -53,6 +53,13 @@ export function useWallet() {
     const onFocus = () => void refetch();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
+  }, [refetch]);
+
+  useEffect(() => {
+    if (typeof globalThis.window === "undefined") return;
+    const onAuth = () => void refetch();
+    globalThis.window.addEventListener("auth-changed", onAuth);
+    return () => globalThis.window.removeEventListener("auth-changed", onAuth);
   }, [refetch]);
 
   return { balance, source, loading, error, refetch };

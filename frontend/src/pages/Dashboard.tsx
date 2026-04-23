@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { CandlestickChart } from "../components/charts/CandlestickChart";
 import { MiniSparkline } from "../components/charts/MiniSparkline";
 import { AppShell } from "../components/layout/AppShell";
@@ -10,6 +11,8 @@ import { NEWS, portfolioTotalValue } from "../data/mockData";
 import { useAssets } from "../hooks/useAssets";
 import { usePortfolioRows } from "../hooks/usePortfolioRows";
 import { useWallet } from "../hooks/useWallet";
+import { formatLastSyncText } from "../lib/formatLastSync";
+import { isApiConfigured } from "../lib/env";
 
 function randSeries(seed: number, n = 12) {
   let x = seed;
@@ -26,6 +29,8 @@ export function Dashboard() {
     loading: assetsLoading,
     error: assetsError,
     refetch: refetchAssets,
+    streamConnected,
+    lastSyncAt,
   } = useAssets();
   const { balance: cashBalance, source: walletSource } = useWallet();
   const {
@@ -69,7 +74,7 @@ export function Dashboard() {
             </h1>
           </div>
           <p className="text-sm text-slate-500">
-            Real-time data · Last sync just now
+            {formatLastSyncText(lastSyncAt, isApiConfigured(), assetSource)}
           </p>
         </div>
 
@@ -175,7 +180,12 @@ export function Dashboard() {
                       className="flex items-center justify-between gap-3 py-2 border-b border-white/[0.05] last:border-0"
                     >
                       <div>
-                        <p className="font-semibold text-white">{row.symbol}</p>
+                        <Link
+                          to={`/symbol/${row.symbol}`}
+                          className="font-semibold text-sky-400 hover:text-sky-300"
+                        >
+                          {row.symbol}
+                        </Link>
                         <p className="text-xs text-slate-500">
                           {row.qty} sh · avg ${row.avgPrice.toFixed(2)}
                         </p>
@@ -203,12 +213,17 @@ export function Dashboard() {
             <GlassCard>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <h2 className="text-sm font-semibold text-white">Top movers</h2>
-                <DataSourceBadge source={assetSource} loading={assetsLoading} />
+                <DataSourceBadge
+                  source={assetSource}
+                  loading={assetsLoading}
+                  streamConnected={streamConnected}
+                />
               </div>
               <div className="space-y-2">
                 {movers.map((a) => (
-                  <div
+                  <Link
                     key={a.symbol}
+                    to={`/symbol/${a.symbol}`}
                     className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-white/[0.03] hover:bg-white/[0.06] transition-colors duration-200"
                   >
                     <div>
@@ -228,7 +243,7 @@ export function Dashboard() {
                         {a.changePct.toFixed(2)}%
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </GlassCard>

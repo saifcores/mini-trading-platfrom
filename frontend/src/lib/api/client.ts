@@ -61,11 +61,26 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 401 && !isAuthEndpoint) {
+      const AUTH_EMAIL_KEY = "auth_email";
+      setAuthToken(null);
+      globalThis.localStorage?.removeItem(AUTH_EMAIL_KEY);
+      if (typeof globalThis.window !== "undefined") {
+        globalThis.window.dispatchEvent(new Event("auth-changed"));
+      }
+    }
     let message = text || res.statusText || "Request failed";
     try {
-      const j = JSON.parse(text) as { message?: string; code?: string };
+      const j = JSON.parse(text) as {
+        message?: string;
+        code?: string;
+        details?: string[];
+      };
       if (typeof j.message === "string") {
         message = j.code ? `${j.code}: ${j.message}` : j.message;
+        if (Array.isArray(j.details) && j.details.length > 0) {
+          message += ` — ${j.details.join("; ")}`;
+        }
       }
     } catch {
       /* keep body as message */

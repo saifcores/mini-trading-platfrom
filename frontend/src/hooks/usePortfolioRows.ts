@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchPortfolio } from "../api/trading";
+import { fetchPortfolio, TRADING_UPDATED_EVENT } from "../api/trading";
 import type { PortfolioRow } from "../data/mockData";
 import { PORTFOLIO } from "../data/mockData";
-import { ApiError } from "../lib/api/client";
+import { ApiError, getAuthToken } from "../lib/api/client";
 import { isApiConfigured } from "../lib/env";
 
 type Source = "mock" | "api";
@@ -16,11 +16,16 @@ function formatPortfolioError(e: unknown): string {
 export function usePortfolioRows() {
   const [rows, setRows] = useState<PortfolioRow[]>(PORTFOLIO);
   const [source, setSource] = useState<Source>("mock");
-  const [loading, setLoading] = useState(isApiConfigured);
+  const [loading, setLoading] = useState(
+    () => isApiConfigured() && !!getAuthToken(),
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isApiConfigured()) return;
+    if (!isApiConfigured() || !getAuthToken()) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     fetchPortfolio()
       .then((data) => {
@@ -44,7 +49,7 @@ export function usePortfolioRows() {
   }, []);
 
   const refetch = useCallback(() => {
-    if (!isApiConfigured()) {
+    if (!isApiConfigured() || !getAuthToken()) {
       setRows(PORTFOLIO);
       setSource("mock");
       setError(null);
@@ -65,6 +70,20 @@ export function usePortfolioRows() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (typeof globalThis.window === "undefined") return;
+    const onSessionOrTrade = () => void refetch();
+    globalThis.window.addEventListener("auth-changed", onSessionOrTrade);
+    globalThis.window.addEventListener(TRADING_UPDATED_EVENT, onSessionOrTrade);
+    return () => {
+      globalThis.window.removeEventListener("auth-changed", onSessionOrTrade);
+      globalThis.window.removeEventListener(
+        TRADING_UPDATED_EVENT,
+        onSessionOrTrade,
+      );
+    };
+  }, [refetch]);
 
   return { rows, source, loading, error, refetch };
 }

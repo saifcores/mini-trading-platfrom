@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchOrders } from "../api/trading";
+import { fetchOrders, TRADING_UPDATED_EVENT } from "../api/trading";
 import type { OrderRow } from "../data/mockData";
 import { ORDERS } from "../data/mockData";
-import { ApiError } from "../lib/api/client";
+import { ApiError, getAuthToken } from "../lib/api/client";
 import { isApiConfigured } from "../lib/env";
 
 type Source = "mock" | "api";
@@ -16,11 +16,16 @@ function formatOrdersError(e: unknown): string {
 export function useOrders() {
   const [orders, setOrders] = useState<OrderRow[]>(ORDERS);
   const [source, setSource] = useState<Source>("mock");
-  const [loading, setLoading] = useState(isApiConfigured);
+  const [loading, setLoading] = useState(
+    () => isApiConfigured() && !!getAuthToken(),
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isApiConfigured()) return;
+    if (!isApiConfigured() || !getAuthToken()) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     fetchOrders()
       .then((data) => {
@@ -44,7 +49,7 @@ export function useOrders() {
   }, []);
 
   const refetch = useCallback(() => {
-    if (!isApiConfigured()) {
+    if (!isApiConfigured() || !getAuthToken()) {
       setOrders(ORDERS);
       setSource("mock");
       setError(null);
@@ -65,6 +70,20 @@ export function useOrders() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (typeof globalThis.window === "undefined") return;
+    const onSessionOrTrade = () => void refetch();
+    globalThis.window.addEventListener("auth-changed", onSessionOrTrade);
+    globalThis.window.addEventListener(TRADING_UPDATED_EVENT, onSessionOrTrade);
+    return () => {
+      globalThis.window.removeEventListener("auth-changed", onSessionOrTrade);
+      globalThis.window.removeEventListener(
+        TRADING_UPDATED_EVENT,
+        onSessionOrTrade,
+      );
+    };
+  }, [refetch]);
 
   return { orders, source, loading, error, refetch };
 }
